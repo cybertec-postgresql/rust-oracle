@@ -30,20 +30,23 @@ use crate::Connection;
 
 pub struct RowSharedData {
     column_names: Vec<String>,
+    column_values: Vec<SqlValue>,
 }
 
 /// Row in a result set of a select statement
 pub struct Row {
     pub(crate) shared: Rc<RowSharedData>,
-    pub(crate) column_values: Vec<SqlValue>,
 }
 
 impl Row {
     pub(crate) fn new(column_names: Vec<String>, column_values: Vec<SqlValue>) -> Result<Row> {
-        let shared = RowSharedData { column_names };
+        let shared = RowSharedData {
+            column_names,
+            column_values,
+        };
+
         Ok(Row {
             shared: Rc::new(shared),
-            column_values,
         })
     }
 
@@ -54,12 +57,12 @@ impl Row {
         T: FromSql,
     {
         let pos = colidx.idx(&self.shared.column_names)?;
-        self.column_values[pos].get()
+        self.shared.column_values[pos].get()
     }
 
     /// Returns column values as a vector of SqlValue
     pub fn sql_values(&self) -> &[SqlValue] {
-        &self.column_values
+        &self.shared.column_values
     }
 
     /// Gets column values as specified type.
@@ -92,7 +95,12 @@ impl Row {
 impl fmt::Debug for Row {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Row {{ ")?;
-        for (name, value) in self.shared.column_names.iter().zip(&self.column_values) {
+        for (name, value) in self
+            .shared
+            .column_names
+            .iter()
+            .zip(&self.shared.column_values)
+        {
             write!(f, "{}: {:?} ", name, value)?;
         }
         write!(f, "}}")
@@ -224,14 +232,8 @@ pub trait RowValue: Sized {
 
 impl RowValue for Row {
     fn get(row: &Row) -> Result<Row> {
-        let num_cols = row.column_values.len();
-        let mut column_values = Vec::with_capacity(num_cols);
-        for val in &row.column_values {
-            column_values.push(val.dup_by_handle()?);
-        }
         Ok(Row {
             shared: row.shared.clone(),
-            column_values,
         })
     }
 }
