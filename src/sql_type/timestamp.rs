@@ -286,7 +286,7 @@ impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}-{:02}-{:02} {:02}:{:02}:{:02}",
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
             self.year, self.month, self.day, self.hour, self.minute, self.second
         )?;
         match self.precision {
